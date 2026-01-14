@@ -1,0 +1,22 @@
+# Cocogitto configuration for conventional commits
+# https://docs.cocogitto.io/
+
+[changelog]
+path = "CHANGELOG.md"
+authors = []
+
+[git_hooks.commit-msg]
+script = "cog verify --file $1"
+
+# Commit types allowed
+[commit_types]
+feat = { changelog_title = "Features" }
+fix = { changelog_title = "Bug Fixes" }
+docs = { changelog_title = "Documentation" }
+style = { changelog_title = "Style" }
+refactor = { changelog_title = "Refactoring" }
+perf = { changelog_title = "Performance" }
+test = { changelog_title = "Tests" }
+build = { changelog_title = "Build" }
+ci = { changelog_title = "CI" }
+chore = { changelog_title = "Chores", omit_from_changelog = true }

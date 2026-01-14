@@ -11,9 +11,9 @@ tasks:
       - task --list
 
   deps:
-    desc: Install dependencies (shellcheck, shfmt, yq, ruff)
+    desc: Install dependencies (shellcheck, shfmt, yq, ruff, cocogitto)
     cmds:
-      - brew install shellcheck shfmt yq ruff
+      - brew install shellcheck shfmt yq ruff cocogitto
 
   lint:
     desc: Run shellcheck on source files
@@ -88,6 +88,22 @@ tasks:
     cmds:
       - rm -rf {{.DIST_DIR}}
       - rm -f {{.SRC_DIR}}/core/05-config.sh
+
+  # Conventional commits (cocogitto)
+  cog:check:
+    desc: Verify commits follow conventional commit format
+    cmds:
+      - cog check
+
+  cog:changelog:
+    desc: Generate CHANGELOG.md from commits
+    cmds:
+      - cog changelog --at {{.CLI_ARGS | default "HEAD"}} > CHANGELOG.md
+
+  cog:hook:
+    desc: Install git hook for commit message validation
+    cmds:
+      - cog install-hook commit-msg
 
   # Development helpers
   dev:test:
