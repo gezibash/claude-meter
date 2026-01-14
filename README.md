@@ -4,7 +4,7 @@ Custom statusline for Claude Code CLI. Displays context usage, session metrics, 
 
 ```
 ┃━━━━━━━━━━━━━━●──────────────────│~~~~~~~~┃ 65K used (45K reserved) │ 50K / 155K │ 32% │ $0.42
-stride: 3:7 (0.43) │ pace: ⣤⣶⣿⣶⣤⣀ 8.2s │ coding
+stride: 1:4 ‹ │ pace: ⣤⣶⣿⣶⣤⣀ 8.2s │ coding
 focus: → config.yml │ revs: build.sh ×3
 skills: sample │ mcp: context7 exa │ cmds: commit
 main +12/-3 ✓ 5m │ opus │ sess: 12m34s
@@ -14,7 +14,7 @@ main +12/-3 ✓ 5m │ opus │ sess: 12m34s
 
 - **Progress bar** - Visual context window usage with color thresholds
 - **Resource tracking** - Token counts, costs, context percentage
-- **Rhythm metrics** - Stride ratio (user:claude), pace sparkline, mode detection
+- **Rhythm metrics** - Stride ratio (user:claude) with acceleration arrows (« ‹ · › »), pace sparkline, mode detection
 - **Focus tracking** - Current file/directory concentration, edit counts
 - **Infrastructure** - Skills loaded, MCP servers connected, slash commands used
 - **Session info** - Git branch, model name, active session duration
