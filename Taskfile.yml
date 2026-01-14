@@ -11,9 +11,9 @@ tasks:
       - task --list
 
   deps:
-    desc: Install dependencies (shellcheck, shfmt, yq)
+    desc: Install dependencies (shellcheck, shfmt, yq, ruff)
     cmds:
-      - brew install shellcheck shfmt yq
+      - brew install shellcheck shfmt yq ruff
 
   lint:
     desc: Run shellcheck on source files
@@ -35,11 +35,28 @@ tasks:
     cmds:
       - find {{.SRC_DIR}} -name "*.sh" -exec shfmt -d -i 4 {} +
 
+  lint:py:
+    desc: Run ruff check on Python files
+    cmds:
+      - ruff check *.py
+
+  fmt:py:
+    desc: Format Python files with ruff
+    cmds:
+      - ruff format *.py
+
+  fmt:py:check:
+    desc: Check Python formatting without modifying
+    cmds:
+      - ruff format --check *.py
+
   check:
     desc: Run all checks (lint + format check)
     cmds:
       - task: lint
+      - task: lint:py
       - task: fmt:check
+      - task: fmt:py:check
 
   build:
     desc: Generate config, assemble, and minify
