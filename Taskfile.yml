@@ -1,0 +1,82 @@
+version: '3'
+
+vars:
+  SRC_DIR: src
+  DIST_DIR: dist
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  deps:
+    desc: Install dependencies (shellcheck, shfmt, yq)
+    cmds:
+      - brew install shellcheck shfmt yq
+
+  lint:
+    desc: Run shellcheck on source files
+    cmds:
+      - find {{.SRC_DIR}} -name "*.sh" -exec shellcheck {} +
+
+  lint:assembled:
+    desc: Run shellcheck on assembled output
+    cmds:
+      - shellcheck {{.DIST_DIR}}/statusline.sh
+
+  fmt:
+    desc: Format source files with shfmt (in-place)
+    cmds:
+      - find {{.SRC_DIR}} -name "*.sh" -exec shfmt -w -i 4 {} +
+
+  fmt:check:
+    desc: Check formatting without modifying
+    cmds:
+      - find {{.SRC_DIR}} -name "*.sh" -exec shfmt -d -i 4 {} +
+
+  check:
+    desc: Run all checks (lint + format check)
+    cmds:
+      - task: lint
+      - task: fmt:check
+
+  build:
+    desc: Generate config, assemble, and minify
+    cmds:
+      - ./build.sh
+    sources:
+      - src/**/*.sh
+      - config.yml
+    generates:
+      - dist/statusline.min.sh
+
+  link:
+    desc: Symlink minified script to ~/.claude/statusline.sh
+    deps: [check, build]
+    cmds:
+      - ln -sf "$(pwd)/{{.DIST_DIR}}/statusline.min.sh" ~/.claude/statusline.sh
+      - cp transcript_parser.py ~/.claude/transcript_parser.py
+      - cp context_parser.py ~/.claude/context_parser.py
+      - echo "Linked ~/.claude/statusline.sh -> $(pwd)/{{.DIST_DIR}}/statusline.min.sh"
+
+  unlink:
+    desc: Remove symlink
+    cmds:
+      - rm -f ~/.claude/statusline.sh
+      - echo "Removed ~/.claude/statusline.sh symlink"
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf {{.DIST_DIR}}
+      - rm -f {{.SRC_DIR}}/core/05-config.sh
+
+  # Development helpers
+  dev:test:
+    desc: Test assembled script with sample input
+    deps: [build]
+    cmds:
+      - |
+        echo '{"model":{"display_name":"opus"},"context_window":{"context_window_size":200000,"current_usage":{"input_tokens":50000}}}' | {{.DIST_DIR}}/statusline.sh
+

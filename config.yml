@@ -1,0 +1,35 @@
+# claude-meter build configuration
+# Edit these options and run `task build` to regenerate
+
+version: "1.0.0"
+
+options:
+  # Progress bar
+  bar_width: 40
+  bar_style: ascii          # ascii | blocks
+
+  # Context thresholds (percentage)
+  warn_threshold: 50
+  high_threshold: 70
+  crit_threshold: 80
+
+  # Overhead estimates (tokens)
+  ctx_overhead: 18000       # System prompt
+  ctx_buffer: 45000         # Autocompact reserve
+
+  # Focus tracking
+  focus_window: 15
+  focus_file_threshold: 70
+  focus_dir_threshold: 50
+
+  # Rhythm
+  stride_window: 20
+  sparkline_style: braille  # braille | blocks | arrows
+
+# Domains to include (order matters for display)
+domains:
+  - resources
+  - rhythm
+  - focus
+  - infra
+  - session

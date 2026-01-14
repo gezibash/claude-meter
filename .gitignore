@@ -1,0 +1,27 @@
+# Claude Code local settings
+.claude/settings.local.json
+.claude/agent.id
+
+# Build outputs
+dist/
+
+# Task runner cache
+.task/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Generated config (rebuilt on each build)
+src/core/05-config.sh
