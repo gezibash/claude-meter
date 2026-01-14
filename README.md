@@ -5,7 +5,7 @@ Custom statusline for Claude Code CLI. Displays context usage, session metrics, 
 ```
 ┃━━━━━━━━━━━━━━●──────────────────│~~~~~~~~┃ 65K used (45K reserved) │ 50K / 155K │ 32% │ $0.42
 stride: 1:4 ‹ │ pace: ⣤⣶⣿⣶⣤⣀ 8.2s │ coding
-focus: → config.yml │ revs: build.sh ×3
+focus: → config.yml │ edits: build.sh (3)
 skills: sample │ mcp: context7 exa │ cmds: commit
 main +12/-3 ✓ 5m │ opus │ sess: 12m34s
 ```

@@ -29,7 +29,7 @@ fi
 
 # Build revision indicator
 if [ "$top_edit_count" -ge "$REV_THRESHOLD" ] && [ -n "$top_edit_file" ]; then
-    rev_str="\033[1mrev:\033[0m ${top_edit_count}× ${top_edit_file}"
+    rev_str="\033[1medits:\033[0m ${top_edit_file} (${top_edit_count})"
 fi
 
 # Assemble domain output
