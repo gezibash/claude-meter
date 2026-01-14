@@ -22,19 +22,27 @@ main +12/-3 ✓ 5m │ opus │ sess: 12m34s
 ## Requirements
 
 - macOS (uses `pmset` for sleep detection, `stat -f` syntax)
-- [task](https://taskfile.dev/) - Task runner
 - [jq](https://jqlang.github.io/jq/) - JSON processing
 - Python 3.9+
-- Homebrew (for installing shellcheck, shfmt, yq)
 
-## Installation
+## Quick Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gezibash/claude-meter/main/install.sh | bash
+```
+
+This downloads the statusline and Python helpers to `~/.claude/`. Claude Code will use it automatically on next session.
+
+## Development Install
+
+For contributing or customizing:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/claude-meter.git
+git clone https://github.com/gezibash/claude-meter.git
 cd claude-meter
 
-# Install dependencies
+# Install dev dependencies (shellcheck, shfmt, yq, ruff, cocogitto)
 task deps
 
 # Build and link to ~/.claude

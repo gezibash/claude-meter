@@ -2,8 +2,9 @@
 .claude/settings.local.json
 .claude/agent.id
 
-# Build outputs
-dist/
+# Build outputs (keep statusline.min.sh for curl install)
+dist/*
+!dist/statusline.min.sh
 
 # Task runner cache
 .task/
