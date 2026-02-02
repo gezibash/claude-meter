@@ -397,9 +397,6 @@ sync=""
 else
 sync="○"
 fi
-diff_stats=$(git diff --numstat HEAD 2>/dev/null|awk '{a+=$1; d+=$2} END {print a+0, d+0}')
-lines_add=$(echo "$diff_stats"|cut -d' ' -f1)
-lines_del=$(echo "$diff_stats"|cut -d' ' -f2)
 last_commit=$(git log -1 --format=%ct 2>/dev/null)
 if [ -n "$last_commit" ];then
 now=$(date +%s)
@@ -416,11 +413,7 @@ fi
 else
 commit_ago="-"
 fi
-if [ "$lines_add" -eq 0 ]&&[ "$lines_del" -eq 0 ];then
 git_str="\033[2m$branch\033[0m $sync \033[2m$commit_ago\033[0m"
-else
-git_str="\033[2m$branch\033[0m \033[32m+$lines_add\033[0m/\033[31m-$lines_del\033[0m $sync \033[2m$commit_ago\033[0m"
-fi
 else
 git_str="\033[2m-\033[0m"
 fi
