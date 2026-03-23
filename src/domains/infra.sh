@@ -115,10 +115,36 @@ if [ "$cmd_count" -gt 0 ]; then
     [ $remaining -gt 0 ] && cmds_str+="\033[2m+${remaining}\033[0m"
 fi
 
-# Assemble domain output (skills, mcp, commands - NO agents for now)
+# Session duration (subtract inactive time from total)
+_infra_sf="${CACHE_DIR}/claude-session-${sid}"
+if [ ! -f "$_infra_sf" ]; then
+    date +%s >"$_infra_sf"
+fi
+_infra_start=$(cat "$_infra_sf" 2>/dev/null)
+if ! [[ "$_infra_start" =~ ^[0-9]+$ ]]; then
+    _infra_start=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${_infra_start%%+*}" "+%s" 2>/dev/null || date +%s)
+fi
+_infra_inactive=${T_INACTIVE_SECS:-0}
+_infra_dur=$(($(date +%s) - _infra_start - _infra_inactive))
+[ $_infra_dur -lt 0 ] && _infra_dur=0
+_infra_h=$((_infra_dur / 3600))
+_infra_m=$(((_infra_dur % 3600) / 60))
+_infra_s=$((_infra_dur % 60))
+if [ $_infra_h -gt 0 ]; then
+    dur_str=$(printf "%dh%02dm" $_infra_h $_infra_m)
+elif [ $_infra_m -gt 0 ]; then
+    dur_str=$(printf "%dm%02ds" $_infra_m $_infra_s)
+else
+    dur_str=$(printf "%ds" $_infra_s)
+fi
+
+# Assemble domain output
 domain_infra=""
 [ -n "$skills_str" ] && domain_infra+="$skills_str"
 [ -n "$mcp_str" ] && [ -n "$domain_infra" ] && domain_infra+=" │ "
 [ -n "$mcp_str" ] && domain_infra+="$mcp_str"
 [ -n "$cmds_str" ] && [ -n "$domain_infra" ] && domain_infra+=" │ "
 [ -n "$cmds_str" ] && domain_infra+="$cmds_str"
+# Model + duration at the end
+[ -n "$domain_infra" ] && domain_infra+=" │ "
+domain_infra+="\033[36m${model}\033[0m │ ${dur_str}"

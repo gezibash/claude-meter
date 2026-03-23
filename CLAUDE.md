@@ -50,21 +50,20 @@ options:
 domains:
   - resources               # Order matters
   - rhythm
-  - focus
+  - ratelimits
   - infra
-  - session
 ```
 
 ## Build Commands
 
 ```bash
-task deps      # Install shellcheck, shfmt, yq
-task build     # Generate config, assemble, minify
-task link      # Symlink dist/ to ~/.claude/statusline.sh
-task lint      # Run shellcheck on src/
-task fmt       # Format src/ with shfmt
-task clean     # Remove dist/ and generated config
-task dev:test  # Test with sample JSON input
+mise run deps      # Install shellcheck, shfmt, yq
+mise run build     # Generate config, assemble, minify
+mise run link      # Symlink dist/ to ~/.claude/statusline.sh
+mise run lint      # Run shellcheck on src/
+mise run fmt       # Format src/ with shfmt
+mise run clean     # Remove dist/ and generated config
+mise run dev:test  # Test with sample JSON input
 ```
 
 ## How It Works
@@ -100,7 +99,7 @@ Toggle via env vars (`CLAUDE_METER_*`) at runtime:
 ## Adding Features
 
 1. Edit component in `src/domains/` or `src/core/`
-2. Run `task build && task link` to deploy
+2. Run `mise run build && mise run link` to deploy
 3. Changes take effect on next Claude update
 
 ## Adding a New Domain
@@ -116,13 +115,13 @@ Toggle via env vars (`CLAUDE_METER_*`) at runtime:
    ```
 2. Add to `config.yml` domains list
 3. Add case to `src/output/99-assemble.sh`
-4. Run `task build`
+4. Run `mise run build`
 
 ## Debugging
 
 ```bash
 # Test assembled script
-task dev:test
+mise run dev:test
 
 # Test with custom JSON
 echo '{"model":{"display_name":"opus"},...}' | dist/statusline.sh

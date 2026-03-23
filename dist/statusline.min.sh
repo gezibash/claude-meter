@@ -25,10 +25,9 @@ MAX_COMMANDS_SHOWN=3
 SPARKLINE_LENGTH=6
 SHOW_RESOURCES=${CLAUDE_METER_RESOURCES:-1}
 SHOW_RHYTHM=${CLAUDE_METER_RHYTHM:-1}
-SHOW_FOCUS=${CLAUDE_METER_FOCUS:-1}
+SHOW_RATELIMITS=${CLAUDE_METER_RATELIMITS:-1}
 SHOW_INFRA=${CLAUDE_METER_INFRA:-1}
-SHOW_SESSION=${CLAUDE_METER_SESSION:-1}
-DOMAIN_ORDER=${CLAUDE_METER_ORDER:-"resources,rhythm,focus,infra,session"}
+DOMAIN_ORDER=${CLAUDE_METER_ORDER:-"resources,rhythm,ratelimits,infra"}
 SLEEP_CACHE="$CACHE_DIR/claude-sleep-times"
 SLEEP_CACHE_TTL=300
 if [ -f "$SLEEP_CACHE" ]&&[ $(($(date +%s)-$(stat -f %m "$SLEEP_CACHE" 2>/dev/null||echo 0))) -lt $SLEEP_CACHE_TTL ];then
@@ -94,7 +93,7 @@ printf "%${count}s"|tr ' ' "$char"
 }
 fmt_k(){
 if [ "$1" -ge 1000 ];then
-printf "%dK" "$((($1+500)/1000))"
+printf "%dK" "$((($1 + 500)/1000))"
 else
 echo "$1"
 fi
@@ -118,7 +117,11 @@ eval "$(echo "$input"|jq -r '
   input_tok=\(.context_window.current_usage.input_tokens // 0)
   cache_read=\(.context_window.current_usage.cache_read_input_tokens // 0)
   cache_create=\(.context_window.current_usage.cache_creation_input_tokens // 0)
-  cost=\(.cost.total_cost_usd // 0)"
+  cost=\(.cost.total_cost_usd // 0)
+  rate_5h_pct=\(.rate_limits.five_hour.used_percentage // -1)
+  rate_5h_reset=\(.rate_limits.five_hour.resets_at // 0)
+  rate_7d_pct=\(.rate_limits.seven_day.used_percentage // -1)
+  rate_7d_reset=\(.rate_limits.seven_day.resets_at // 0)"
 ')"
 total_used=$((input_tok+cache_read+cache_create))
 effective_max=$ctx_size
@@ -170,8 +173,12 @@ if [ "${CTX_MCP_TOOLS:-0}" -gt 0 ];then
 CTX_MCP=$CTX_MCP_TOOLS
 fi
 fi
+_res_prefix=""
+if [ -n "${SWARM_AGENT:-}" ];then
+_res_prefix="\033[1;35m$SWARM_AGENT\033[0m "
+fi
 if [ "${has_usage_data:-0}" -eq 0 ];then
-domain_resources="\033[2m(context data unavailable)\033[0m"
+domain_resources="$_res_prefix\033[2m(context data unavailable)\033[0m"
 text_color="\033[37m"
 else
 if [ $true_pct -lt $CTX_WARN_THRESHOLD ];then
@@ -188,7 +195,7 @@ fill_color="48;5;196"
 text_color="\033[31m"
 fi
 msg_width=$((total_used*BAR_WIDTH/effective_max))
-pos_buffer_start=$(((effective_max-CTX_BUFFER)*BAR_WIDTH/effective_max))
+pos_buffer_start=$(((effective_max - CTX_BUFFER)*BAR_WIDTH/effective_max))
 buffer_width=$((BAR_WIDTH-pos_buffer_start))
 remaining=$((pos_buffer_start-msg_width))
 [ $msg_width -le 0 ]&&[ $total_used -gt 0 ]&&msg_width=1&&remaining=$((remaining-1))
@@ -214,7 +221,7 @@ bar+="┃"
 fi
 cost_str=$(printf '$%.2f' "$cost")
 breakdown="$text_color$total_fmt used\033[0m \033[2m($buffer_fmt reserved)\033[0m"
-domain_resources=$(printf "$bar $breakdown │ $msg_fmt / $eff_fmt │ \033[1m%d%%\033[0m │ %s" "$true_pct" "$cost_str")
+domain_resources=$(printf "$_res_prefix$bar $breakdown │ $msg_fmt / $eff_fmt │ \033[1m%d%%\033[0m │ %s" "$true_pct" "$cost_str")
 fi
 step_str=""
 stride_str=""
@@ -273,28 +280,81 @@ domain_rhythm=""
 [ -n "$step_str" ]&&domain_rhythm+="$step_str"
 [ -n "$mode_str" ]&&[ -n "$domain_rhythm" ]&&domain_rhythm+=" │ "
 [ -n "$mode_str" ]&&domain_rhythm+="$mode_str"
-focus_str=""
-rev_str=""
-prev_type="${T_FOCUS_PREV_TYPE:-}"
-prev_label="${T_FOCUS_PREV_LABEL:-}"
-curr_type="${T_FOCUS_CURR_TYPE:-}"
-curr_label="${T_FOCUS_CURR_LABEL:-}"
-top_edit_file="${T_TOP_EDIT_FILE:-}"
-top_edit_count="${T_TOP_EDIT_COUNT:-0}"
-if [ -n "$curr_type" ]&&[ "$curr_type" != "none" ];then
-if [ -z "$prev_type" ]||[ "$prev_type" == "none" ]||{ [ "$prev_type" == "$curr_type" ]&&[ "$prev_label" == "$curr_label" ];};then
-focus_str="\033[1mfocus:\033[0m \033[2m$curr_type\033[0m $curr_label"
+_rl_color(){
+local pct=$1
+if [ "$pct" -lt $CTX_WARN_THRESHOLD ];then
+printf "\033[32m"
+elif [ "$pct" -lt $CTX_HIGH_THRESHOLD ];then
+printf "\033[33m"
+elif [ "$pct" -lt $CTX_CRIT_THRESHOLD ];then
+printf "\033[38;5;208m"
 else
-focus_str="\033[1mfocus:\033[0m \033[2m$prev_type\033[0m $prev_label → \033[2m$curr_type\033[0m $curr_label"
+printf "\033[31m"
+fi
+}
+_rl_fmt_reset(){
+local reset_at=$1 now
+now=$(date +%s)
+local diff=$((reset_at-now))
+[ "$diff" -le 0 ]&&printf "now"&&return
+local today_start tomorrow_start day_after
+today_start=$(date -v0H -v0M -v0S +%s)
+tomorrow_start=$((today_start+86400))
+day_after=$((today_start+172800))
+if [ "$reset_at" -lt "$tomorrow_start" ];then
+if [ "$diff" -ge 3600 ];then
+local h=$((diff/3600)) m=$(((diff % 3600)/60))
+if [ "$m" -gt 0 ];then
+printf "in %dh%dm" "$h" "$m"
+else
+printf "in %dh" "$h"
+fi
+elif [ "$diff" -ge 60 ];then
+printf "in %dm" $((diff/60))
+else
+printf "in %ds" "$diff"
+fi
+else
+local hour minute ampm hour_str
+hour=$(date -r "$reset_at" +%H)
+minute=$(date -r "$reset_at" +%M)
+ampm="am"
+hour=$((10#$hour))
+[ "$hour" -ge 12 ]&&ampm="pm"
+[ "$hour" -gt 12 ]&&hour=$((hour-12))
+[ "$hour" -eq 0 ]&&hour=12
+if [ "$minute" = "00" ];then
+hour_str="$hour$ampm"
+else
+hour_str="$hour:$minute$ampm"
+fi
+if [ "$reset_at" -lt "$day_after" ];then
+printf "tmrw %s" "$hour_str"
+else
+printf "%s %s" "$(date -r "$reset_at" +%a)" "$hour_str"
 fi
 fi
-if [ "$top_edit_count" -ge "$REV_THRESHOLD" ]&&[ -n "$top_edit_file" ];then
-rev_str="\033[1medits:\033[0m $top_edit_file ($top_edit_count)"
+}
+_rl_parts=""
+if [ "${rate_5h_pct%.*}" -ge 0 ] 2>/dev/null;then
+_5h_int=${rate_5h_pct%.*}
+_5h_color=$(_rl_color "$_5h_int")
+_5h_reset=""
+[ "$rate_5h_reset" -gt 0 ]&&_5h_reset=" \033[2mresets $(_rl_fmt_reset "$rate_5h_reset")\033[0m"
+_rl_parts+="${_5h_color}5h: $_5h_int%%\033[0m$_5h_reset"
 fi
-domain_focus=""
-[ -n "$focus_str" ]&&domain_focus+="$focus_str"
-[ -n "$rev_str" ]&&[ -n "$domain_focus" ]&&domain_focus+=" │ "
-[ -n "$rev_str" ]&&domain_focus+="$rev_str"
+if [ "${rate_7d_pct%.*}" -ge 0 ] 2>/dev/null;then
+[ -n "$_rl_parts" ]&&_rl_parts+=" │ "
+_7d_int=${rate_7d_pct%.*}
+_7d_color=$(_rl_color "$_7d_int")
+_7d_reset=""
+[ "$rate_7d_reset" -gt 0 ]&&_7d_reset=" \033[2mresets $(_rl_fmt_reset "$rate_7d_reset")\033[0m"
+_rl_parts+="${_7d_color}7d: $_7d_int%%\033[0m$_7d_reset"
+fi
+domain_ratelimits=""
+if [ -n "$_rl_parts" ];then
+domain_ratelimits=$(printf "$_rl_parts")
+fi
 local_skills=()
 if [ -d "$cwd/.claude/skills" ];then
 while IFS= read -r skill_file;do
@@ -377,77 +437,43 @@ done
 remaining=$((cmd_count-shown))
 [ $remaining -gt 0 ]&&cmds_str+="\033[2m+$remaining\033[0m"
 fi
+_infra_sf="$CACHE_DIR/claude-session-$sid"
+if [ ! -f "$_infra_sf" ];then
+date +%s >"$_infra_sf"
+fi
+_infra_start=$(cat "$_infra_sf" 2>/dev/null)
+if ! [[ $_infra_start =~ ^[0-9]+$ ]];then
+_infra_start=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${_infra_start%%+*}" "+%s" 2>/dev/null||date +%s)
+fi
+_infra_inactive=${T_INACTIVE_SECS:-0}
+_infra_dur=$(($(date +%s)-_infra_start-_infra_inactive))
+[ $_infra_dur -lt 0 ]&&_infra_dur=0
+_infra_h=$((_infra_dur/3600))
+_infra_m=$(((_infra_dur % 3600)/60))
+_infra_s=$((_infra_dur%60))
+if [ $_infra_h -gt 0 ];then
+dur_str=$(printf "%dh%02dm" $_infra_h $_infra_m)
+elif [ $_infra_m -gt 0 ];then
+dur_str=$(printf "%dm%02ds" $_infra_m $_infra_s)
+else
+dur_str=$(printf "%ds" $_infra_s)
+fi
 domain_infra=""
 [ -n "$skills_str" ]&&domain_infra+="$skills_str"
 [ -n "$mcp_str" ]&&[ -n "$domain_infra" ]&&domain_infra+=" │ "
 [ -n "$mcp_str" ]&&domain_infra+="$mcp_str"
 [ -n "$cmds_str" ]&&[ -n "$domain_infra" ]&&domain_infra+=" │ "
 [ -n "$cmds_str" ]&&domain_infra+="$cmds_str"
-cd "$cwd" 2>/dev/null||cd /
-if git rev-parse --git-dir >/dev/null 2>&1;then
-branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-upstream=$(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null)
-if [ -n "$upstream" ];then
-ahead=$(git rev-list --count '@{upstream}..HEAD' 2>/dev/null||echo 0)
-behind=$(git rev-list --count 'HEAD..@{upstream}' 2>/dev/null||echo 0)
-sync=""
-[ "$ahead" -gt 0 ]&&sync+="↑$ahead"
-[ "$behind" -gt 0 ]&&sync+="↓$behind"
-[ -z "$sync" ]&&sync="✓"
-else
-sync="○"
-fi
-last_commit=$(git log -1 --format=%ct 2>/dev/null)
-if [ -n "$last_commit" ];then
-now=$(date +%s)
-diff=$((now-last_commit))
-if [ $diff -lt 60 ];then
-commit_ago="${diff}s"
-elif [ $diff -lt 3600 ];then
-commit_ago="$((diff/60))m"
-elif [ $diff -lt 86400 ];then
-commit_ago="$((diff/3600))h"
-else
-commit_ago="$((diff/86400))d"
-fi
-else
-commit_ago="-"
-fi
-git_str="\033[2m$branch\033[0m $sync \033[2m$commit_ago\033[0m"
-else
-git_str="\033[2m-\033[0m"
-fi
-sf="$CACHE_DIR/claude-session-$sid"
-if [ ! -f "$sf" ];then
-date +%s >"$sf"
-fi
-start=$(cat "$sf" 2>/dev/null)
-if ! [[ $start =~ ^[0-9]+$ ]];then
-start=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${start%%+*}" "+%s" 2>/dev/null||date +%s)
-fi
-inactive_secs=${T_INACTIVE_SECS:-0}
-dur=$(($(date +%s)-start-inactive_secs))
-[ $dur -lt 0 ]&&dur=0
-h=$((dur/3600))
-m=$(((dur%3600)/60))
-s=$((dur%60))
-if [ $h -gt 0 ];then
-dur_str=$'\033[1msess:\033[0m '$(printf "%dh%02dm" $h $m)
-elif [ $m -gt 0 ];then
-dur_str=$'\033[1msess:\033[0m '$(printf "%dm%02ds" $m $s)
-else
-dur_str=$'\033[1msess:\033[0m '$(printf "%ds" $s)
-fi
-domain_session="$git_str │ \033[36m$model\033[0m │ $dur_str"
+[ -n "$domain_infra" ]&&domain_infra+=" │ "
+domain_infra+="\033[36m$model\033[0m │ $dur_str"
 domains=()
 IFS=',' read -ra order <<<"$DOMAIN_ORDER"
 for d in "${order[@]}";do
 case "$d" in
 resources)[ "$SHOW_RESOURCES" = "1" ]&&[ -n "$domain_resources" ]&&domains+=("$domain_resources");;
 rhythm)[ "$SHOW_RHYTHM" = "1" ]&&[ -n "$domain_rhythm" ]&&domains+=("$domain_rhythm");;
-focus)[ "$SHOW_FOCUS" = "1" ]&&[ -n "$domain_focus" ]&&domains+=("$domain_focus");;
-infra)[ "$SHOW_INFRA" = "1" ]&&[ -n "$domain_infra" ]&&domains+=("$domain_infra");;
-session)[ "$SHOW_SESSION" = "1" ]&&[ -n "$domain_session" ]&&domains+=("$domain_session")
+ratelimits)[ "$SHOW_RATELIMITS" = "1" ]&&[ -n "$domain_ratelimits" ]&&domains+=("$domain_ratelimits");;
+infra)[ "$SHOW_INFRA" = "1" ]&&[ -n "$domain_infra" ]&&domains+=("$domain_infra")
 esac
 done
 count=${#domains[@]}

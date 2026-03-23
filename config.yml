@@ -30,6 +30,5 @@ options:
 domains:
   - resources
   - rhythm
-  - focus
+  - ratelimits
   - infra
-  - session

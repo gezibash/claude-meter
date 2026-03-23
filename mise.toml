@@ -1,0 +1,72 @@
+[tasks.deps]
+description = "Install dependencies (shellcheck, shfmt, yq, ruff, cocogitto)"
+run = "brew install shellcheck shfmt yq ruff cocogitto"
+
+[tasks.lint]
+description = "Run shellcheck on source files"
+run = "find src -name '*.sh' -exec shellcheck {} +"
+
+[tasks."lint:assembled"]
+description = "Run shellcheck on assembled output"
+run = "shellcheck dist/statusline.sh"
+
+[tasks.fmt]
+description = "Format source files with shfmt (in-place)"
+run = "find src -name '*.sh' -exec shfmt -w -i 4 {} +"
+
+[tasks."fmt:check"]
+description = "Check formatting without modifying"
+run = "find src -name '*.sh' -exec shfmt -d -i 4 {} +"
+
+[tasks."lint:py"]
+description = "Run ruff check on Python files"
+run = "ruff check *.py"
+
+[tasks."fmt:py"]
+description = "Format Python files with ruff"
+run = "ruff format *.py"
+
+[tasks."fmt:py:check"]
+description = "Check Python formatting without modifying"
+run = "ruff format --check *.py"
+
+[tasks.check]
+description = "Run all checks (lint + format check)"
+depends = ["lint", "lint:py", "fmt:check", "fmt:py:check"]
+
+[tasks.build]
+description = "Generate config, assemble, and minify"
+run = "./build.sh"
+sources = ["src/**/*.sh", "config.yml"]
+outputs = ["dist/statusline.min.sh"]
+
+[tasks.link]
+description = "Symlink minified script to ~/.claude/statusline.sh"
+depends = ["check", "build"]
+run = """
+ln -sf "$(pwd)/dist/statusline.min.sh" ~/.claude/statusline.sh
+cp transcript_parser.py ~/.claude/transcript_parser.py
+cp context_parser.py ~/.claude/context_parser.py
+echo "Linked ~/.claude/statusline.sh -> $(pwd)/dist/statusline.min.sh"
+"""
+
+[tasks.unlink]
+description = "Remove symlink"
+run = """
+rm -f ~/.claude/statusline.sh
+echo "Removed ~/.claude/statusline.sh symlink"
+"""
+
+[tasks.clean]
+description = "Remove build artifacts"
+run = """
+rm -rf dist
+rm -f src/core/05-config.sh
+"""
+
+[tasks."dev:test"]
+description = "Test assembled script with sample input"
+depends = ["build"]
+run = """
+echo '{"model":{"display_name":"opus"},"context_window":{"context_window_size":200000,"current_usage":{"input_tokens":50000}}}' | dist/statusline.sh
+"""

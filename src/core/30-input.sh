@@ -5,7 +5,8 @@
 # Provides: model, cwd, sid, transcript, ctx_size, input_tok,
 #           cache_read, cache_create, cost,
 #           total_used (input+cache_read+cache_create), effective_max, true_pct,
-#           msg_fmt, buffer_fmt, total_fmt, eff_fmt, has_usage_data
+#           msg_fmt, buffer_fmt, total_fmt, eff_fmt, has_usage_data,
+#           rate_5h_pct, rate_5h_reset, rate_7d_pct, rate_7d_reset
 # ============================================================================
 
 eval "$(echo "$input" | jq -r '
@@ -17,7 +18,11 @@ eval "$(echo "$input" | jq -r '
   input_tok=\(.context_window.current_usage.input_tokens // 0)
   cache_read=\(.context_window.current_usage.cache_read_input_tokens // 0)
   cache_create=\(.context_window.current_usage.cache_creation_input_tokens // 0)
-  cost=\(.cost.total_cost_usd // 0)"
+  cost=\(.cost.total_cost_usd // 0)
+  rate_5h_pct=\(.rate_limits.five_hour.used_percentage // -1)
+  rate_5h_reset=\(.rate_limits.five_hour.resets_at // 0)
+  rate_7d_pct=\(.rate_limits.seven_day.used_percentage // -1)
+  rate_7d_reset=\(.rate_limits.seven_day.resets_at // 0)"
 ')"
 
 # Total context = input + cache (what fills the context window)

@@ -14,9 +14,8 @@ for d in "${order[@]}"; do
     case "$d" in
     resources) [ "$SHOW_RESOURCES" = "1" ] && [ -n "$domain_resources" ] && domains+=("$domain_resources") ;;
     rhythm) [ "$SHOW_RHYTHM" = "1" ] && [ -n "$domain_rhythm" ] && domains+=("$domain_rhythm") ;;
-    focus) [ "$SHOW_FOCUS" = "1" ] && [ -n "$domain_focus" ] && domains+=("$domain_focus") ;;
+    ratelimits) [ "$SHOW_RATELIMITS" = "1" ] && [ -n "$domain_ratelimits" ] && domains+=("$domain_ratelimits") ;;
     infra) [ "$SHOW_INFRA" = "1" ] && [ -n "$domain_infra" ] && domains+=("$domain_infra") ;;
-    session) [ "$SHOW_SESSION" = "1" ] && [ -n "$domain_session" ] && domains+=("$domain_session") ;;
     esac
 done
 

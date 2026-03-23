@@ -29,9 +29,8 @@ SPARKLINE_LENGTH=6 # Number of data points to display
 # ============================================================================
 SHOW_RESOURCES=${CLAUDE_METER_RESOURCES:-1}
 SHOW_RHYTHM=${CLAUDE_METER_RHYTHM:-1}
-SHOW_FOCUS=${CLAUDE_METER_FOCUS:-1}
+SHOW_RATELIMITS=${CLAUDE_METER_RATELIMITS:-1}
 SHOW_INFRA=${CLAUDE_METER_INFRA:-1}
-SHOW_SESSION=${CLAUDE_METER_SESSION:-1}
 
 # Domain ordering (comma-separated) - runtime via env var
-DOMAIN_ORDER=${CLAUDE_METER_ORDER:-"resources,rhythm,focus,infra,session"}
+DOMAIN_ORDER=${CLAUDE_METER_ORDER:-"resources,rhythm,ratelimits,infra"}

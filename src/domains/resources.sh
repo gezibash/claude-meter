@@ -7,9 +7,15 @@
 #           buffer_fmt, total_fmt, eff_fmt, cost (from core/input)
 # ============================================================================
 
+# SWARM_AGENT prefix on row 1
+_res_prefix=""
+if [ -n "${SWARM_AGENT:-}" ]; then
+    _res_prefix="\033[1;35m${SWARM_AGENT}\033[0m "
+fi
+
 # If no API data, hide resources display entirely
 if [ "${has_usage_data:-0}" -eq 0 ]; then
-    domain_resources="\033[2m(context data unavailable)\033[0m"
+    domain_resources="${_res_prefix}\033[2m(context data unavailable)\033[0m"
     text_color="\033[37m"
 else
 
@@ -71,6 +77,6 @@ else
     breakdown="${text_color}${total_fmt} used\033[0m \033[2m(${buffer_fmt} reserved)\033[0m"
 
     # Assemble domain output
-    domain_resources=$(printf "${bar} ${breakdown} │ ${msg_fmt} / ${eff_fmt} │ \033[1m%d%%\033[0m │ %s" "$true_pct" "$cost_str")
+    domain_resources=$(printf "${_res_prefix}${bar} ${breakdown} │ ${msg_fmt} / ${eff_fmt} │ \033[1m%d%%\033[0m │ %s" "$true_pct" "$cost_str")
 
 fi # end has_usage_data check
