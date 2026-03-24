@@ -72,24 +72,46 @@ _rl_fmt_reset() {
     fi
 }
 
+# Compute pace delta: actual% vs linear target to reach 100% by reset
+# Returns "▼N%" (under pace, green) or "▲N%" (over pace, red) or "" if no reset
+_rl_pace() {
+    local pct=$1 reset_at=$2 window_secs=$3
+    [ "$reset_at" -le 0 ] 2>/dev/null && return
+    local now
+    now=$(date +%s)
+    local remaining=$((reset_at - now))
+    [ "$remaining" -le 0 ] && return
+    local elapsed=$((window_secs - remaining))
+    [ "$elapsed" -le 0 ] && return
+    local target=$((elapsed * 100 / window_secs))
+    local delta=$((pct - target))
+    if [ "$delta" -le 0 ]; then
+        printf " \033[32m▼%d%%%%\033[0m" "$((-delta))"
+    else
+        printf " \033[31m▲%d%%%%\033[0m" "$delta"
+    fi
+}
+
 # Build rate limits segments
 _rl_parts=""
 
 if [ "${rate_5h_pct%.*}" -ge 0 ] 2>/dev/null; then
     _5h_int=${rate_5h_pct%.*}
     _5h_color=$(_rl_color "$_5h_int")
+    _5h_pace=$(_rl_pace "$_5h_int" "$rate_5h_reset" 18000)
     _5h_reset=""
     [ "$rate_5h_reset" -gt 0 ] && _5h_reset=" \033[2mresets $(_rl_fmt_reset "$rate_5h_reset")\033[0m"
-    _rl_parts+="${_5h_color}5h: ${_5h_int}%%\033[0m${_5h_reset}"
+    _rl_parts+="${_5h_color}5h: ${_5h_int}%%\033[0m${_5h_pace}${_5h_reset}"
 fi
 
 if [ "${rate_7d_pct%.*}" -ge 0 ] 2>/dev/null; then
     [ -n "$_rl_parts" ] && _rl_parts+=" │ "
     _7d_int=${rate_7d_pct%.*}
     _7d_color=$(_rl_color "$_7d_int")
+    _7d_pace=$(_rl_pace "$_7d_int" "$rate_7d_reset" 604800)
     _7d_reset=""
     [ "$rate_7d_reset" -gt 0 ] && _7d_reset=" \033[2mresets $(_rl_fmt_reset "$rate_7d_reset")\033[0m"
-    _rl_parts+="${_7d_color}7d: ${_7d_int}%%\033[0m${_7d_reset}"
+    _rl_parts+="${_7d_color}7d: ${_7d_int}%%\033[0m${_7d_pace}${_7d_reset}"
 fi
 
 # Assemble domain output (only if we have rate limit data)
