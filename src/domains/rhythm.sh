@@ -1,14 +1,13 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2154,SC2034  # Variables from core/input, used in output
 # ============================================================================
-# Domain: Rhythm (stride ratio, pace, mode)
-# Provides: domain_rhythm, stride_str, step_str, mode_str
+# Domain: Rhythm (stride ratio, pace)
+# Provides: domain_rhythm, stride_str, step_str
 # Requires: T_* variables (from core/32-transcript-parse.sh)
 # ============================================================================
 
 step_str=""
 stride_str=""
-mode_str=""
 
 # Pace - use pre-computed values from Python parser
 if [ -n "$T_PACE_AVG" ] && [ "$T_PACE_AVG" != "0" ] && [ "$T_PACE_AVG" != "0.0" ]; then
@@ -56,25 +55,8 @@ else
     stride_str="\033[1mstride:\033[0m —"
 fi
 
-# Mode - directly from parser
-if [ -n "$T_MODE" ]; then
-    case "$T_MODE" in
-    idle)
-        mode_str="\033[2mmode: idle\033[0m"
-        ;;
-    stuck)
-        mode_str="\033[1mmode:\033[0m \033[31mstuck\033[0m"
-        ;;
-    *)
-        mode_str="\033[1mmode:\033[0m $T_MODE"
-        ;;
-    esac
-fi
-
 # Assemble domain output
 domain_rhythm=""
 [ -n "$stride_str" ] && domain_rhythm+="$stride_str"
 [ -n "$step_str" ] && [ -n "$domain_rhythm" ] && domain_rhythm+=" │ "
 [ -n "$step_str" ] && domain_rhythm+="$step_str"
-[ -n "$mode_str" ] && [ -n "$domain_rhythm" ] && domain_rhythm+=" │ "
-[ -n "$mode_str" ] && domain_rhythm+="$mode_str"
